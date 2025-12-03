@@ -1,166 +1,191 @@
-📌 Evaluating Hybrid Visual Odometry Under Scene Dynamics
+# 📌 Evaluating Hybrid Visual Odometry Under Scene Dynamics
 
 Hybrid Visual Odometry (VO) combines classical geometry-based pipelines with modern deep feature detectors and matchers. While classical VO (e.g., ORB-SLAM-style pipelines) performs well in static environments, it suffers when dynamic elements dominate the scene. Deep neural components such as SuperPoint, DISK, SuperGlue, and LightGlue improve feature robustness but often overfit to training domains.
 
-This project systematically benchmarks classical, deep, and hybrid VO pipelines under varying levels of scene dynamics, using both indoor and outdoor datasets.
+This project systematically benchmarks **classical, deep, and hybrid VO pipelines** under **varying levels of scene dynamics**, using both indoor and outdoor datasets.
 
-🚀 Project Goals
+## 🚀 Project Goals
 
-Evaluate different VO pipelines (classical, deep, hybrid) under controlled scene dynamics.
+- Evaluate different VO pipelines (classical, deep, hybrid) under controlled scene dynamics
+- Compare detectors: **ORB**, **SuperPoint**, **DISK**
+- Compare matchers: **kNN**, **SuperGlue**, **LightGlue**
+- Assess dynamic-object masking: **optical flow** (classical) vs **Fast-SCNN** (deep)
+- Quantify robustness using **ATE**, **RPE**, **inlier ratio**, **match count**, and **runtime**
 
-Compare detectors: ORB, SuperPoint, DISK.
+**Research Question:**  
+👉 *How do hybrid VO systems behave as scene dynamics increase, and which components contribute most to robustness?*
 
-Compare matchers: kNN, SuperGlue, LightGlue.
+## 📁 Repository Structure
 
-Assess dynamic-object masking: optical flow (classical) vs Fast-SCNN (deep).
-
-Quantify robustness using ATE, RPE, inlier ratio, match count, and runtime.
-
-Ultimately, we aim to answer:
-👉 How do hybrid VO systems behave as scene dynamics increase, and which components contribute most to robustness?
-
-📁 Repository Structure
+```
 evaluating_hybrid_visual_odometry_under_scene_dynamics/
- ├── detectors/
- │    ├── orb_detector.py
- │    ├── superpoint_infer.py
- │    └── disk_infer.py
- ├── matchers/
- │    ├── knn_matcher.py
- │    ├── superglue_infer.py
- │    └── lightglue_infer.py
- ├── masking/
- │    ├── opticalflow_mask.py
- │    └── fastscnn_infer.py
- ├── geometry/
- │    └── pose_estimation.py
- ├── eval/
- │    ├── metrics.py        # ATE, RPE, drift, inlier stats
- │    ├── align.py
- │    └── plots.py
- ├── config/
- │    └── pipeline.yaml     # configure detector, matcher, mask, scenario
- ├── scripts/
- │    └── download_data.sh  # optional dataset downloader
- ├── main.py                # main evaluation runner
- ├── requirements.txt
- └── README.md
+├── detectors/
+│   ├── orb_detector.py
+│   ├── superpoint_infer.py
+│   └── disk_infer.py
+├── matchers/
+│   ├── knn_matcher.py
+│   ├── superglue_infer.py
+│   └── lightglue_infer.py
+├── masking/
+│   ├── opticalflow_mask.py
+│   └── fastscnn_infer.py
+├── geometry/
+│   └── pose_estimation.py
+├── eval/
+│   ├── metrics.py
+│   ├── align.py
+│   └── plots.py
+├── config/
+│   └── pipeline.yaml
+├── scripts/
+│   └── download_data.sh
+├── main.py
+├── requirements.txt
+└── README.md
+```
 
-📦 Installation
-1. Create environment
+## 📦 Installation
+
+### 1. Create environment
+```bash
 conda create -n vo-benchmark python=3.9
 conda activate vo-benchmark
+```
 
-2. Install dependencies
+### 2. Install dependencies
+```bash
 pip install -r requirements.txt
+```
 
-3. (Optional) Install EVO for trajectory evaluation
+### 3. Install EVO (for trajectory evaluation)
+```bash
 pip install evo --upgrade
+```
 
-📊 Datasets
+## 📊 Datasets
 
-We evaluate VO pipelines on indoor and outdoor benchmarks covering static to highly dynamic scenes.
+We evaluate VO pipelines on indoor and outdoor benchmarks that cover static, moderately dynamic, and highly dynamic motion.
 
-TUM RGB-D (Indoor)
+### TUM RGB-D (Indoor)
+- `fr1/desk` — static
+- `fr3/walking_xyz` — low dynamics
+- `fr3/walking_halfsphere` — high dynamics
 
-fr1/desk — static
+### KITTI Odometry (Outdoor)
+- `00` — mostly static
+- `05` — medium dynamics
+- `09` — high dynamics with dense traffic
 
-fr3/walking_xyz — low dynamics
-
-fr3/walking_halfsphere — high dynamics
-
-KITTI Odometry (Outdoor)
-
-00 — mostly static
-
-05 — medium dynamics
-
-09 — high dynamics with dense traffic
-
-Place them under data/ in this structure:
-
+**Expected directory layout:**
+```
 data/
- ├── TUM/fr3/walking_halfsphere/
- └── KITTI/09/
+├── TUM/
+│   ├── fr1/desk/
+│   ├── fr3/walking_xyz/
+│   └── fr3/walking_halfsphere/
+└── KITTI/
+    ├── 00/
+    ├── 05/
+    └── 09/
+```
 
-🧠 VO Pipelines Evaluated
-Classical
+## 📥 Downloading the Datasets
 
-ORB detector
+### TUM RGB-D
+```bash
+mkdir -p data/TUM
+cd data/TUM
 
-kNN matching
+curl -O https://vision.in.tum.de/rgbd/dataset/freiburg1/rgbd_dataset_freiburg1_desk.tgz
+curl -O https://vision.in.tum.de/rgbd/dataset/freiburg3/rgbd_dataset_freiburg3_walking_xyz.tgz
+curl -O https://vision.in.tum.de/rgbd/dataset/freiburg3/rgbd_dataset_freiburg3_walking_halfsphere.tgz
 
-Essential matrix + RANSAC
+# Extract
+tar -xvf rgbd_dataset_freiburg1_desk.tgz
+tar -xvf rgbd_dataset_freiburg3_walking_xyz.tgz
+tar -xvf rgbd_dataset_freiburg3_walking_halfsphere.tgz
+```
 
-No loop closure (for fairness)
+### KITTI Odometry
+```bash
+mkdir -p data/KITTI
+cd data/KITTI
 
-Deep Components
+curl -O https://s3.eu-central-1.amazonaws.com/avg-kitti/data_odometry_gray.zip
+unzip data_odometry_gray.zip
 
-SuperPoint, DISK (detectors & descriptors)
+# Only keep sequences 00/, 05/, 09/ (delete the rest to save disk space)
+```
 
-SuperGlue, LightGlue (learned matchers)
+### Automated Script
+```bash
+chmod +x scripts/download_data.sh
+./scripts/download_data.sh
+```
 
-Fast-SCNN for dynamic object masking
+## 🧠 VO Pipelines Evaluated
 
-Hybrid
+### Classical
+- ORB detector
+- kNN matching
+- Essential Matrix + RANSAC
+- Monocular pipeline (no loop closure)
 
-Classical geometry (5-point RANSAC)
+### Deep Components
+- **Detectors:** SuperPoint, DISK (learned detectors & descriptors)
+- **Matchers:** SuperGlue, LightGlue (learned matchers)
+- **Masking:** Fast-SCNN (dynamic-region removal)
 
-Deep detector + matcher
+### Hybrid Pipeline
+- Deep detector + Deep matcher
+- Classical geometric pose estimation
+- Optional dynamic-object masking
 
-Optional dynamic masking
+## 📈 Metrics
 
-📈 Metrics
+We measure:
+- **Absolute Trajectory Error (ATE)**
+- **Relative Pose Error (RPE)**
+- **Scale drift**
+- **Inlier ratio**
+- **Number of matches**
+- **Tracking failures**
+- **Runtime (FPS)**
 
-We evaluate each pipeline using:
+Trajectory alignment uses the Umeyama method (via EVO toolkit).
 
-Absolute Trajectory Error (ATE)
+## 🧪 Running Experiments
 
-Relative Pose Error (RPE)
-
-Inlier ratio / number of matches
-
-Tracking failures
-
-Runtime (FPS)
-
-Trajectory alignment uses the Umeyama alignment (via EVO).
-
-🧪 Running Experiments
-
-Run a full VO experiment using:
-
+```bash
 python main.py --config config/pipeline.yaml
+```
 
-
-Example pipeline.yaml:
-
+**Example `pipeline.yaml`:**
+```yaml
 detector: superpoint
 matcher: lightglue
 masking: fastscnn
 dataset: TUM
 sequence: fr3/walking_halfsphere
+```
 
-📌 Expected Findings
+## 📌 Expected Findings
 
-Based on prior research and early observations:
+- Deep matchers (SuperGlue / LightGlue) improve robustness in moderately dynamic scenes
+- Hybrid pipelines (SuperPoint + LightGlue) offer the best balance of robustness and runtime
+- Dynamic masking significantly stabilizes pose estimation under high dynamics
+- Classical ORB + kNN works well in static scenes but degrades quickly with motion and occlusion
 
-Deep matchers (SuperGlue / LightGlue) improve robustness under moderate dynamics.
+## 👥 Authors
 
-Hybrid pipelines (SuperPoint + LightGlue) offer the best balance of accuracy and runtime.
-
-Dynamic-region masking helps significantly in highly dynamic scenes.
-
-Classical pipelines perform well in static scenes but degrade quickly as motion increases.
-
-👥 Authors
-
-Hongyuan Kang
-
-Zhengbin Lu
-
-Hanzhi Bian
-
-Yujia Zhai
+- Hongyuan Kang
+- Zhengbin Lu
+- Hanzhi Bian
+- Yujia Zhai
 
 Columbia University — COMS 4776 (Fall 2025)
+
+## 📄 License
+
+MIT License
