@@ -1,0 +1,57 @@
+# ============================================================================
+# Visual Odometry Pipeline Configuration
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Detector Configuration
+# ----------------------------------------------------------------------------
+detector: orb  # Options: orb (for baseline)
+detector_params:
+  nfeatures: 2000  # Number of ORB features to detect
+
+# ----------------------------------------------------------------------------
+# Matcher Configuration
+# ----------------------------------------------------------------------------
+matcher: knn  # Options: knn (for baseline)
+matcher_params:
+  ratio: 0.75  # Lowe's ratio test threshold (0.0-1.0)
+
+# ----------------------------------------------------------------------------
+# Masking Configuration
+# ----------------------------------------------------------------------------
+masking: none  # Options: none, opticalflow, fastscnn (none for baseline)
+
+# ----------------------------------------------------------------------------
+# Dataset Configuration
+# ----------------------------------------------------------------------------
+dataset: TUM  # Dataset type: TUM or KITTI
+sequence: rgbd_dataset_freiburg1_desk  # Sequence folder name
+# Available TUM sequences:
+#   - rgbd_dataset_freiburg1_desk (static)
+#   - rgbd_dataset_freiburg3_walking_xyz (low dynamics)
+#   - rgbd_dataset_freiburg3_walking_halfsphere (high dynamics)
+data_root: data/TUM  # Base path for datasets
+
+# ----------------------------------------------------------------------------
+# Pose Estimation Parameters
+# ----------------------------------------------------------------------------
+pose_estimation:
+  ransac_threshold: 0.999  # RANSAC threshold for essential matrix estimation
+  ransac_confidence: 1.0    # RANSAC confidence level
+  min_matches: 8           # Minimum number of matches required for pose estimation
+
+# ----------------------------------------------------------------------------
+# Evaluation Parameters
+# ----------------------------------------------------------------------------
+evaluation:
+  max_time_diff: 0.02  # Maximum time difference (seconds) for timestamp matching
+  rpe_delta: 1         # Frame interval for relative pose error computation
+
+# ----------------------------------------------------------------------------
+# Output Configuration
+# ----------------------------------------------------------------------------
+output:
+  trajectory_file: trajectory.txt      # Output trajectory file (TUM format)
+  trajectory_plot: trajectory.png     # 3D trajectory visualization
+  errors_plot: errors.png              # Error plots (ATE, RPE)
+  plot_dpi: 150                        # Plot resolution (dots per inch)
