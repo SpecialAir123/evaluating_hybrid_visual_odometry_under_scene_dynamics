@@ -9,7 +9,8 @@ from detectors.orb_detector import ORBDetector
 from matchers.knn_matcher import KNNMatcher
 from geometry.pose_estimation import PoseEstimator
 from eval.dataset_loader_tum import TUMDataset
-from eval.groundtruth_loader import load_tum_groundtruth, align_trajectories, sync_trajectories
+from eval.dataset_loader_kitti import KITTIDataset, save_trajectory_kitti
+from eval.groundtruth_loader import load_tum_groundtruth, load_kitti_groundtruth, align_trajectories, sync_trajectories
 from eval.metrics import compute_ate, compute_rpe
 from eval.plots import plot_trajectory, plot_errors
 
@@ -84,15 +85,22 @@ def main():
     if "dataset" not in cfg or "sequence" not in cfg:
         raise ValueError("Config must specify 'dataset' and 'sequence', or provide via --dataset and --sequence")
     
-    # Get camera intrinsics based on sequence
-    sequence_name = cfg.get("sequence", "")
-    K = get_tum_intrinsics(sequence_name)
-    
-    # Dataset path
-    dataset_type = cfg.get("dataset", "TUM")
+    # Dataset configuration
+    dataset_type = cfg.get("dataset", "TUM").upper()
     data_root = cfg.get("data_root", f"data/{dataset_type}")
-    dataset_path = os.path.join(data_root, cfg['sequence'])
-    dataset = TUMDataset(dataset_path)
+    sequence = cfg['sequence']
+    
+    # Load dataset and get camera intrinsics
+    if dataset_type == "KITTI":
+        camera = cfg.get("camera", 0)  # Default to left grayscale camera
+        dataset = KITTIDataset(data_root, sequence, camera=camera)
+        K = dataset.get_intrinsics()
+        dataset_path = dataset.sequence_path
+    else:
+        # TUM dataset
+        dataset_path = os.path.join(data_root, sequence)
+        dataset = TUMDataset(dataset_path)
+        K = get_tum_intrinsics(sequence)
     
     # Initialize detector
     detector_type = cfg.get("detector", "orb")
@@ -172,16 +180,26 @@ def main():
     
     # Save trajectory if requested
     if args.save:
-        save_trajectory_tum(trajectory, timestamps, args.save)
+        if dataset_type == "KITTI":
+            save_trajectory_kitti(trajectory, args.save)
+        else:
+            save_trajectory_tum(trajectory, timestamps, args.save)
         print(f"Saved trajectory to {args.save}")
     
     # Evaluation against ground truth
     if args.eval:
-        groundtruth_path = os.path.join(dataset_path, "groundtruth.txt")
-        gt_timestamps, poses_gt = load_tum_groundtruth(groundtruth_path)
+        # Load ground truth based on dataset type
+        if dataset_type == "KITTI":
+            groundtruth_path = dataset.get_poses_path()
+            gt_timestamps, poses_gt = load_kitti_groundtruth(groundtruth_path)
+        else:
+            groundtruth_path = os.path.join(dataset_path, "groundtruth.txt")
+            gt_timestamps, poses_gt = load_tum_groundtruth(groundtruth_path)
         
         if poses_gt is None:
             print(f"\n⚠️  Ground truth not found at {groundtruth_path}")
+            if dataset_type == "KITTI":
+                print("   Note: KITTI only provides ground truth for sequences 00-10.")
             print("   Skipping evaluation. Run without --eval to just process VO.")
         else:
             print(f"\n📊 Evaluating against ground truth...")
@@ -193,11 +211,19 @@ def main():
             max_time_diff = eval_params.get("max_time_diff", 0.02)
             rpe_delta = eval_params.get("rpe_delta", 1)
             
-            # Synchronize trajectories by timestamps
-            trajectory_sync, poses_gt_sync = sync_trajectories(
-                timestamps, trajectory, gt_timestamps, poses_gt, max_time_diff=max_time_diff
-            )
-            print(f"   After sync: {len(trajectory_sync)} matched poses")
+            # Synchronize trajectories
+            if dataset_type == "KITTI":
+                # KITTI: poses are aligned to frames, just match by index
+                min_len = min(len(trajectory), len(poses_gt))
+                trajectory_sync = trajectory[:min_len]
+                poses_gt_sync = poses_gt[:min_len]
+                print(f"   After sync: {len(trajectory_sync)} matched poses")
+            else:
+                # TUM: synchronize by timestamps
+                trajectory_sync, poses_gt_sync = sync_trajectories(
+                    timestamps, trajectory, gt_timestamps, poses_gt, max_time_diff=max_time_diff
+                )
+                print(f"   After sync: {len(trajectory_sync)} matched poses")
             
             # Align trajectories (scale, rotation, translation)
             trajectory_aligned, scale = align_trajectories(trajectory_sync, poses_gt_sync)

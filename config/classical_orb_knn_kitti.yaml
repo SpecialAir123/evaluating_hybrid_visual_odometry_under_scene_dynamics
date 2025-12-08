@@ -1,0 +1,56 @@
+# ============================================================================
+# Classical Visual Odometry Pipeline: ORB + kNN on KITTI Dataset
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Detector Configuration
+# ----------------------------------------------------------------------------
+detector: orb
+detector_params:
+  nfeatures: 3000  # More features for larger images
+
+# ----------------------------------------------------------------------------
+# Matcher Configuration
+# ----------------------------------------------------------------------------
+matcher: knn
+matcher_params:
+  ratio: 0.75
+
+# ----------------------------------------------------------------------------
+# Masking Configuration
+# ----------------------------------------------------------------------------
+masking: none
+
+# ----------------------------------------------------------------------------
+# Dataset Configuration (can be overridden via CLI: --dataset, --sequence)
+# ----------------------------------------------------------------------------
+dataset: KITTI
+sequence: "00"  # KITTI sequences: 00-21 (ground truth only for 00-10)
+data_root: data/KITTI  # Path to KITTI odometry dataset
+
+# KITTI-specific settings
+camera: 0  # 0=left grayscale, 1=right grayscale, 2=left color, 3=right color
+
+# ----------------------------------------------------------------------------
+# Pose Estimation Parameters
+# ----------------------------------------------------------------------------
+pose_estimation:
+  ransac_threshold: 0.999
+  ransac_confidence: 1.0
+  min_matches: 8
+
+# ----------------------------------------------------------------------------
+# Evaluation Parameters
+# ----------------------------------------------------------------------------
+evaluation:
+  rpe_delta: 1  # Frame delta for RPE computation
+
+# ----------------------------------------------------------------------------
+# Output Configuration
+# ----------------------------------------------------------------------------
+output:
+  trajectory_file: trajectory_kitti.txt
+  trajectory_plot: trajectory_kitti.png
+  errors_plot: errors_kitti.png
+  plot_dpi: 150
+

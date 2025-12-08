@@ -3,6 +3,48 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 
+def load_kitti_groundtruth(poses_path):
+    """
+    Load KITTI format ground truth poses.
+    
+    KITTI poses format: Each line contains 12 values (3x4 transformation matrix in row-major)
+        r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+    
+    Args:
+        poses_path: Path to poses file (e.g., poses/00.txt)
+    
+    Returns:
+        timestamps: List of frame indices as timestamps
+        poses: List of 4x4 transformation matrices
+    """
+    if not os.path.exists(poses_path):
+        return None, None
+    
+    poses = []
+    timestamps = []
+    
+    with open(poses_path, "r") as f:
+        for idx, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
+            
+            values = [float(x) for x in line.split()]
+            if len(values) != 12:
+                print(f"Warning: Invalid pose at line {idx}, expected 12 values, got {len(values)}")
+                continue
+            
+            # Build 4x4 transformation matrix
+            pose = np.eye(4)
+            pose[:3, :4] = np.array(values).reshape(3, 4)
+            
+            timestamps.append(float(idx))
+            poses.append(pose)
+    
+    print(f"Loaded {len(poses)} ground truth poses from {poses_path}")
+    return timestamps, poses
+
+
 def load_tum_groundtruth(groundtruth_path):
     """
     Load TUM format ground truth trajectory.
