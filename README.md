@@ -93,7 +93,8 @@ Image → Deep Detector → Deep Matcher → Essential Matrix + RANSAC → Pose
 │   └── plots.py                  # Visualization utilities
 │
 ├── config/                  # Pipeline configuration files
-│   └── classical_orb_knn.yaml   # Classical ORB + kNN config
+│   ├── classical_orb_knn.yaml        # Classical ORB + kNN config (TUM)
+│   └── classical_orb_knn_kitti.yaml  # Classical ORB + kNN config (KITTI)
 │
 ├── data/                    # Datasets (not tracked in git)
 │   ├── TUM/                 # TUM RGB-D sequences
@@ -149,9 +150,16 @@ unzip data_odometry_gray.zip
 
 ### 3. Run Baseline
 
+**TUM:**
 ```bash
 python main.py --config config/classical_orb_knn.yaml \
                --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+```
+
+**KITTI:**
+```bash
+python main.py --config config/classical_orb_knn_kitti.yaml \
+               --sequence 00 --eval
 ```
 
 ---
@@ -208,8 +216,8 @@ python main.py --config config/classical_orb_knn.yaml \
 
 **Run on KITTI:**
 ```bash
-python main.py --config config/classical_orb_knn.yaml \
-               --dataset KITTI --sequence 09 --eval
+python main.py --config config/classical_orb_knn_kitti.yaml \
+               --sequence 09 --eval
 ```
 
 **Batch processing (loop over sequences):**
@@ -271,7 +279,8 @@ output:
 
 ### Available Configs
 
-- `config/classical_orb_knn.yaml` - Classical: ORB + kNN (✅ implemented)
+- `config/classical_orb_knn.yaml` - Classical: ORB + kNN (✅ implemented for TUM)
+- `config/classical_orb_knn_kitti.yaml` - Classical: ORB + kNN (✅ implemented for KITTI)
 - `config/hybrid_superpoint_superglue.yaml` - Hybrid: SuperPoint + SuperGlue (🚧 to be implemented)
 - `config/hybrid_superpoint_lightglue_mask.yaml` - Hybrid with masking (🚧 to be implemented)
 
@@ -317,9 +326,17 @@ data/TUM/
 ```
 data/KITTI/
 ├── 00/
+│   ├── image_0/
+│   ├── image_1/
+│   ├── calib.txt
+│   └── times.txt
 ├── 05/
 └── 09/
+├── poses/ (Optional, for ground truth)
+│   ├── 00.txt
+│   └── ...
 ```
+*(Note: Ground truth poses can also be placed directly inside the sequence folder or at `data/KITTI/00.txt`)*
 
 ---
 
