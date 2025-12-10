@@ -8,3 +8,13 @@ torchvision
 evo
 scikit-image
 pyyaml
+
+# Deep learning feature extractors and matchers
+# SuperPoint and LightGlue (loaded via torch.hub or pip)
+# For LightGlue, you can also install via:
+# pip install git+https://github.com/cvg/LightGlue.git
+
+# Optional: For semantic segmentation masking
+# torchvision already includes DeepLabV3 and Mask R-CNN
+# For Fast-SCNN, install separately:
+# pip install git+https://github.com/Tramac/Fast-SCNN-pytorch.git

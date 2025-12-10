@@ -1,0 +1,46 @@
+# Hybrid Pipeline: SuperPoint + LightGlue
+# This configuration uses deep learning for both feature detection and matching
+
+# Detector configuration
+detector: superpoint
+detector_params:
+  device: cuda
+  max_keypoints: 2048
+  keypoint_threshold: 0.005
+  nms_radius: 4
+
+# Matcher configuration
+matcher: lightglue
+matcher_params:
+  features: superpoint  # Match with detector type
+  device: cuda
+  filter_threshold: 0.1
+
+# Use LightGlue adapter (recommended for best performance)
+use_lightglue_adapter: true
+
+# Masking (none for basic hybrid pipeline)
+masking: none
+
+# Dataset (can be overridden via CLI)
+dataset: TUM
+sequence: rgbd_dataset_freiburg1_desk
+data_root: data/TUM
+
+# Pose estimation parameters
+pose_estimation:
+  ransac_threshold: 0.999
+  ransac_confidence: 1.0
+  min_matches: 8
+
+# Evaluation parameters
+evaluation:
+  max_time_diff: 0.02
+  rpe_delta: 1
+
+# Output configuration
+output:
+  trajectory_file: trajectory_superpoint_lightglue.txt
+  trajectory_plot: trajectory_superpoint_lightglue.png
+  errors_plot: errors_superpoint_lightglue.png
+  plot_dpi: 150

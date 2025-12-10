@@ -6,7 +6,11 @@ import os
 from scipy.spatial.transform import Rotation as R
 
 from detectors.orb_detector import ORBDetector
+from detectors.superpoint_infer import SuperPoint
 from matchers.knn_matcher import KNNMatcher
+from matchers.lightglue_infer import LightGlue, LightGlueMatcherAdapter
+from masking.opticalflow_mask import OpticalFlowMask, OpticalFlowMaskAdvanced
+from masking.semantic_mask import SemanticSegmentationMask, HybridMask
 from geometry.pose_estimation import PoseEstimator
 from eval.dataset_loader_tum import TUMDataset
 from eval.groundtruth_loader import load_tum_groundtruth, align_trajectories, sync_trajectories
@@ -99,16 +103,64 @@ def main():
     detector_params = cfg.get("detector_params", {})
     if detector_type == "orb":
         detector = ORBDetector(**detector_params)
+    elif detector_type == "superpoint":
+        device = detector_params.pop("device", "cuda")
+        config = detector_params if detector_params else None
+        detector = SuperPoint(config=config, device=device)
     else:
         raise ValueError(f"Unknown detector: {detector_type}")
     
     # Initialize matcher
     matcher_type = cfg.get("matcher", "knn")
     matcher_params = cfg.get("matcher_params", {})
+    use_lightglue_adapter = False
+
     if matcher_type == "knn":
         matcher = KNNMatcher(**matcher_params)
+    elif matcher_type == "lightglue":
+        features = matcher_params.pop("features", "superpoint")
+        device = matcher_params.pop("device", "cuda")
+        config = matcher_params if matcher_params else None
+
+        # Check if we should use the adapter (recommended for LightGlue)
+        if cfg.get("use_lightglue_adapter", True):
+            matcher = LightGlueMatcherAdapter(detector, features=features,
+                                             config=config, device=device)
+            use_lightglue_adapter = True
+        else:
+            matcher = LightGlue(features=features, config=config, device=device)
     else:
         raise ValueError(f"Unknown matcher: {matcher_type}")
+
+    # Initialize masking (optional)
+    masking_type = cfg.get("masking", "none")
+    masking_params = cfg.get("masking_params", {})
+    mask_generator = None
+
+    if masking_type == "opticalflow":
+        flow_method = masking_params.get("flow_method", "farneback")
+        threshold = masking_params.get("threshold", 2.0)
+        mask_generator = OpticalFlowMask(flow_method=flow_method, threshold=threshold)
+    elif masking_type == "opticalflow_advanced":
+        flow_method = masking_params.get("flow_method", "farneback")
+        threshold = masking_params.get("threshold", 3.0)
+        mask_generator = OpticalFlowMaskAdvanced(flow_method=flow_method, threshold=threshold)
+    elif masking_type == "semantic":
+        model = masking_params.get("model", "deeplabv3")
+        dataset_seg = masking_params.get("dataset", "coco")
+        device_seg = masking_params.get("device", "cuda")
+        mask_generator = SemanticSegmentationMask(model=model, dataset=dataset_seg,
+                                                  device=device_seg)
+    elif masking_type == "hybrid":
+        flow_threshold = masking_params.get("flow_threshold", 2.0)
+        semantic_model = masking_params.get("semantic_model", "deeplabv3")
+        dataset_seg = masking_params.get("dataset", "coco")
+        device_seg = masking_params.get("device", "cuda")
+        mask_generator = HybridMask(flow_threshold=flow_threshold,
+                                   semantic_model=semantic_model,
+                                   dataset=dataset_seg, device=device_seg)
+    elif masking_type != "none":
+        raise ValueError(f"Unknown masking type: {masking_type}")
     
     # Initialize pose estimator
     pose_params = cfg.get("pose_estimation", {})
@@ -118,31 +170,60 @@ def main():
     trajectory = []
     timestamps = []
     current_pose = np.eye(4)  # 4x4 transformation matrix
-    
+
     print(f"\nRunning VO Pipeline on {len(dataset)} frames...")
     print(f"  Method: {detector_type} + {matcher_type}")
+    print(f"  Masking: {masking_type}")
     print(f"  Dataset: {dataset_type} / {cfg['sequence']}")
     print("-" * 50)
     
     for i in range(len(dataset)):
         img = dataset[i]
         timestamp = dataset.get_timestamp(i)
-        
+
         if prev_img is None:
             prev_img = img
             trajectory.append(current_pose.copy())
             timestamps.append(timestamp)
+            # Initialize mask generator if needed
+            if mask_generator is not None:
+                _ = mask_generator(img)
             continue
-        
+
+        # Generate dynamic mask (optional)
+        static_mask = None
+        if mask_generator is not None:
+            static_mask = mask_generator(img)
+
         # Detect features
-        kp1, desc1 = detector(prev_img)
-        kp2, desc2 = detector(img)
-        
+        if use_lightglue_adapter:
+            # Use adapter's detect method to cache keypoints
+            kp1, desc1 = matcher.detect(prev_img)
+            kp2, desc2 = matcher.detect(img)
+        else:
+            kp1, desc1 = detector(prev_img)
+            kp2, desc2 = detector(img)
+
+        # Apply masking to keypoints if enabled
+        if static_mask is not None:
+            # Filter keypoints based on mask
+            kp1_filtered, indices1 = mask_generator.apply_mask_to_keypoints(kp1, static_mask)
+            kp2_filtered, indices2 = mask_generator.apply_mask_to_keypoints(kp2, static_mask)
+            desc1_filtered = desc1[indices1] if len(indices1) > 0 else desc1[:0]
+            desc2_filtered = desc2[indices2] if len(indices2) > 0 else desc2[:0]
+        else:
+            kp1_filtered, desc1_filtered = kp1, desc1
+            kp2_filtered, desc2_filtered = kp2, desc2
+
         # Match features
-        matches = matcher(desc1, desc2)
-        
+        if use_lightglue_adapter:
+            # LightGlue adapter uses cached keypoints
+            matches = matcher.match(desc1_filtered, desc2_filtered)
+        else:
+            matches = matcher(desc1_filtered, desc2_filtered)
+
         # Estimate pose
-        R_est, t_est, inliers = pose_estimator.estimate(kp1, kp2, matches)
+        R_est, t_est, inliers = pose_estimator.estimate(kp1_filtered, kp2_filtered, matches)
         
         if R_est is not None and t_est is not None:
             # Update trajectory
