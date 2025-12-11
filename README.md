@@ -275,6 +275,18 @@ output:
 - `config/hybrid_superpoint_superglue.yaml` - Hybrid: SuperPoint + SuperGlue (🚧 to be implemented)
 - `config/hybrid_superpoint_lightglue_mask.yaml` - Hybrid with masking (🚧 to be implemented)
 
+## 🛣️ Planned Pipelines
+
+We are expanding the benchmark to cover seven pipelines spanning classical, hybrid, and fully-deep configurations:
+
+1) ORB + kNN — classical baseline; strong in static scenes, degrades with dynamics.  
+2) ORB + SuperGlue — isolates the benefit of a deep matcher with a classical detector.  
+3) ORB + LightGlue — lighter deep matcher vs SuperGlue under the same detector.  
+4) SuperPoint + kNN — deep detector with classical matching to gauge learned features alone.  
+5) SuperPoint + SuperGlue — fully deep, heavy pipeline for maximum robustness.  
+6) SuperPoint + LightGlue — fully deep, efficient alternative for runtime vs accuracy trade-offs.  
+7) DISK + LightGlue — alternative learned detector paired with a deep matcher to compare SuperPoint vs DISK.
+
 ### Design Philosophy
 
 This structure allows you to:
