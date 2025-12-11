@@ -93,23 +93,31 @@ def main():
     data_root = cfg.get("data_root", f"data/{dataset_type}")
     dataset_path = os.path.join(data_root, cfg['sequence'])
     dataset = TUMDataset(dataset_path)
-    
+
     # Initialize detector
     detector_type = cfg.get("detector", "orb")
     detector_params = cfg.get("detector_params", {})
+
     if detector_type == "orb":
         detector = ORBDetector(**detector_params)
+    elif detector_type == "superpoint":
+        from detectors.superpoint_infer import SuperPointDetector
+        detector = SuperPointDetector(**detector_params)
     else:
         raise ValueError(f"Unknown detector: {detector_type}")
-    
+
     # Initialize matcher
     matcher_type = cfg.get("matcher", "knn")
     matcher_params = cfg.get("matcher_params", {})
+
     if matcher_type == "knn":
         matcher = KNNMatcher(**matcher_params)
+    elif matcher_type == "superglue":
+        from matchers.superglue_infer import SuperGlueMatcher
+        matcher = SuperGlueMatcher(**matcher_params)
     else:
         raise ValueError(f"Unknown matcher: {matcher_type}")
-    
+
     # Initialize pose estimator
     pose_params = cfg.get("pose_estimation", {})
     pose_estimator = PoseEstimator(K, **pose_params)
@@ -139,7 +147,13 @@ def main():
         kp2, desc2 = detector(img)
         
         # Match features
-        matches = matcher(desc1, desc2)
+        if matcher_type == "knn":
+            matches = matcher(desc1, desc2)
+        elif matcher_type == "superglue":
+            h, w = img.shape[:2]
+            matches = matcher(kp1, desc1, kp2, desc2, image_shape=(h, w))
+        else:
+            raise ValueError(f"Unknown matcher: {matcher_type}")
         
         # Estimate pose
         R_est, t_est, inliers = pose_estimator.estimate(kp1, kp2, matches)
