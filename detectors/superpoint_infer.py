@@ -25,8 +25,7 @@ class SuperPointDetector:
         self.net.load_state_dict(state_dict)
         self.net.eval()
 
-    def __call__(self, image):
-        """image: 单通道 uint8 (H,W)，返回 cv2.KeyPoint 列表 + 描述子 np.ndarray (N,D)"""
+    def detect_and_compute(self, image):
         if image.ndim == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -37,7 +36,6 @@ class SuperPointDetector:
         with torch.no_grad():
             pred = self.net({"image": img_tensor})
 
-        # pred 通常包含 "keypoints" (B, N, 2) 和 "descriptors" (B, D, N)
         kps = pred["keypoints"][0].cpu().numpy()           # (N,2) [x,y]
         desc = pred["descriptors"][0].cpu().numpy().T      # (N,D)
 
