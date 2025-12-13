@@ -103,6 +103,9 @@ def main():
     elif detector_type == "superpoint":
         from detectors.superpoint_infer import SuperPointDetector
         detector = SuperPointDetector(**detector_params)
+    elif detector_type == "disk":
+        from detectors.disk_infer import DISKDetector
+        detector = DISKDetector(**detector_params)
     else:
         raise ValueError(f"Unknown detector: {detector_type}")
 
@@ -115,6 +118,9 @@ def main():
     elif matcher_type == "superglue":
         from matchers.superglue_infer import SuperGlueMatcher
         matcher = SuperGlueMatcher(**matcher_params)
+    elif matcher_type == "lightglue":
+        from matchers.lightglue_infer import LightGlueMatcher
+        matcher = LightGlueMatcher(**matcher_params)
     else:
         raise ValueError(f"Unknown matcher: {matcher_type}")
 
@@ -149,7 +155,7 @@ def main():
         # Match features
         if matcher_type == "knn":
             matches = matcher(desc1, desc2)
-        elif matcher_type == "superglue":
+        elif matcher_type in ["superglue", "lightglue"]:
             h, w = img.shape[:2]
             matches = matcher(kp1, desc1, kp2, desc2, image_shape=(h, w))
         else:

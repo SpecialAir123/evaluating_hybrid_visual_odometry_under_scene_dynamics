@@ -1,0 +1,17 @@
+detector: disk
+detector_params:
+  nfeatures: 1000
+
+matcher: lightglue
+matcher_params:
+  features: disk
+
+pose_estimation:
+  ransac_threshold: 0.999
+  min_matches: 8
+
+dataset: TUM
+sequence: rgbd_dataset_freiburg1_desk
+evaluation:
+  max_time_diff: 0.02
+
