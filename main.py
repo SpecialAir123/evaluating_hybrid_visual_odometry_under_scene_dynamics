@@ -97,19 +97,19 @@ def main():
     data_root = cfg.get("data_root", f"data/{dataset_type}")
     dataset_path = os.path.join(data_root, cfg['sequence'])
     dataset = TUMDataset(dataset_path)
-    
+
     # Initialize detector
     detector_type = cfg.get("detector", "orb")
     detector_params = cfg.get("detector_params", {})
+
     if detector_type == "orb":
         detector = ORBDetector(**detector_params)
     elif detector_type == "superpoint":
-        device = detector_params.pop("device", "cuda")
-        config = detector_params if detector_params else None
-        detector = SuperPoint(config=config, device=device)
+        from detectors.superpoint_infer import SuperPointDetector
+        detector = SuperPointDetector(**detector_params)
     else:
         raise ValueError(f"Unknown detector: {detector_type}")
-    
+
     # Initialize matcher
     matcher_type = cfg.get("matcher", "knn")
     matcher_params = cfg.get("matcher_params", {})
@@ -117,6 +117,9 @@ def main():
 
     if matcher_type == "knn":
         matcher = KNNMatcher(**matcher_params)
+    elif matcher_type == "superglue":
+        from matchers.superglue_infer import SuperGlueMatcher
+        matcher = SuperGlueMatcher(**matcher_params)
     elif matcher_type == "lightglue":
         features = matcher_params.pop("features", "superpoint")
         device = matcher_params.pop("device", "cuda")
@@ -161,7 +164,8 @@ def main():
                                    dataset=dataset_seg, device=device_seg)
     elif masking_type != "none":
         raise ValueError(f"Unknown masking type: {masking_type}")
-    
+
+
     # Initialize pose estimator
     pose_params = cfg.get("pose_estimation", {})
     pose_estimator = PoseEstimator(K, **pose_params)
@@ -216,11 +220,15 @@ def main():
             kp2_filtered, desc2_filtered = kp2, desc2
 
         # Match features
-        if use_lightglue_adapter:
+        if matcher_type == "superglue":
+            h, w = img.shape[:2]
+            matches = matcher(kp1_filtered, desc1_filtered, kp2_filtered, desc2_filtered, image_shape=(h, w))
+        elif use_lightglue_adapter:
             # LightGlue adapter uses cached keypoints
             matches = matcher.match(desc1_filtered, desc2_filtered)
         else:
             matches = matcher(desc1_filtered, desc2_filtered)
+
 
         # Estimate pose
         R_est, t_est, inliers = pose_estimator.estimate(kp1_filtered, kp2_filtered, matches)

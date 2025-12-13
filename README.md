@@ -42,6 +42,7 @@ Image → Deep Detector → Deep Matcher → Essential Matrix + RANSAC → Pose
 - Combines learned feature detection/matching with classical geometry
 - Optional dynamic-object masking for improved robustness
 
+
 ### Pipeline Components
 
 **Detectors:**
@@ -61,6 +62,20 @@ Image → Deep Detector → Deep Matcher → Essential Matrix + RANSAC → Pose
 **Masking (Future):**
 - `OpticalFlowMask` - Classical optical flow-based masking
 - `FastSCNNMask` - Deep semantic segmentation-based masking
+
+
+
+## 🛣️ Planned Pipelines
+
+We are expanding the benchmark to cover seven pipelines spanning classical, hybrid, and fully-deep configurations:
+
+1) ORB + kNN — classical baseline; strong in static scenes, degrades with dynamics.  (Done)
+2) ORB + SuperGlue — isolates the benefit of a deep matcher with a classical detector.  
+3) ORB + LightGlue — lighter deep matcher vs SuperGlue under the same detector.  
+4) SuperPoint + kNN — deep detector with classical matching to gauge learned features alone.  
+5) SuperPoint + SuperGlue — fully deep, heavy pipeline for maximum robustness.  
+6) SuperPoint + LightGlue — fully deep, efficient alternative for runtime vs accuracy trade-offs.  
+7) DISK + LightGlue — alternative learned detector paired with a deep matcher to compare SuperPoint vs DISK.
 
 ---
 
