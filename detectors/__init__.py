@@ -1,4 +1,3 @@
 from .orb_detector import ORBDetector
-
-__all__ = ['ORBDetector']
-
+from .superpoint_infer import SuperPointDetector
+from .disk_infer import DISKDetector
