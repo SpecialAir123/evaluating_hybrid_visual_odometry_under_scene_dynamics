@@ -46,14 +46,14 @@ Image → Deep Detector → Deep Matcher → Essential Matrix + RANSAC → Pose
 ### Pipeline Components
 
 **Detectors:**
-- `ORBDetector` - Classical ORB feature detector
-- `SuperPoint` - Learned detector & descriptor (to be implemented)
-- `DISK` - Learned detector & descriptor (to be implemented)
+- `ORBDetector` - Classical ORB feature detector ✅
+- `SuperPointDetector` - Learned detector & descriptor ✅
+- `DISKDetector` - Learned detector & descriptor (to be implemented)
 
 **Matchers:**
-- `KNNMatcher` - Brute-force kNN matching with ratio test
-- `SuperGlue` - Learned matcher (to be implemented)
-- `LightGlue` - Learned matcher (to be implemented)
+- `KNNMatcher` - Brute-force kNN matching with ratio test ✅
+- `SuperGlueMatcher` - Learned matcher ✅
+- `LightGlueMatcher` - Learned matcher (to be implemented)
 
 **Pose Estimation:**
 - `PoseEstimator` - Essential matrix estimation with RANSAC
@@ -69,13 +69,13 @@ Image → Deep Detector → Deep Matcher → Essential Matrix + RANSAC → Pose
 
 We are expanding the benchmark to cover seven pipelines spanning classical, hybrid, and fully-deep configurations:
 
-1) ORB + kNN — classical baseline; strong in static scenes, degrades with dynamics.  (Done)
-2) ORB + SuperGlue — isolates the benefit of a deep matcher with a classical detector.  
-3) ORB + LightGlue — lighter deep matcher vs SuperGlue under the same detector.  
-4) SuperPoint + kNN — deep detector with classical matching to gauge learned features alone.  
-5) SuperPoint + SuperGlue — fully deep, heavy pipeline for maximum robustness.  
-6) SuperPoint + LightGlue — fully deep, efficient alternative for runtime vs accuracy trade-offs.  
-7) DISK + LightGlue — alternative learned detector paired with a deep matcher to compare SuperPoint vs DISK.
+1) ORB + kNN — classical baseline; strong in static scenes, degrades with dynamics. ✅
+2) ORB + SuperGlue — isolates the benefit of a deep matcher with a classical detector. 🚧
+3) ORB + LightGlue — lighter deep matcher vs SuperGlue under the same detector. 🚧
+4) SuperPoint + kNN — deep detector with classical matching to gauge learned features alone. ✅
+5) SuperPoint + SuperGlue — fully deep, heavy pipeline for maximum robustness. ✅
+6) SuperPoint + LightGlue — fully deep, efficient alternative for runtime vs accuracy trade-offs. 🚧
+7) DISK + LightGlue — alternative learned detector paired with a deep matcher to compare SuperPoint vs DISK. 🚧
 
 ---
 
@@ -84,14 +84,14 @@ We are expanding the benchmark to cover seven pipelines spanning classical, hybr
 ```
 4776_proj/
 ├── detectors/              # Feature detectors
-│   ├── orb_detector.py      # ORB detector (implemented)
-│   ├── superpoint_infer.py  # SuperPoint (to be implemented)
-│   └── disk_infer.py        # DISK (to be implemented)
+│   ├── orb_detector.py      # ORB detector ✅
+│   ├── superpoint_infer.py  # SuperPoint detector ✅
+│   └── disk_infer.py        # DISK detector 🚧
 │
 ├── matchers/                # Feature matchers
-│   ├── knn_matcher.py       # kNN matcher (implemented)
-│   ├── superglue_infer.py   # SuperGlue (to be implemented)
-│   └── lightglue_infer.py   # LightGlue (to be implemented)
+│   ├── knn_matcher.py       # kNN matcher ✅
+│   ├── superglue_infer.py   # SuperGlue matcher ✅
+│   └── lightglue_infer.py   # LightGlue matcher 🚧
 │
 ├── masking/                 # Dynamic object masking
 │   ├── opticalflow_mask.py  # Optical flow masking (to be implemented)
@@ -108,7 +108,9 @@ We are expanding the benchmark to cover seven pipelines spanning classical, hybr
 │   └── plots.py                  # Visualization utilities
 │
 ├── config/                  # Pipeline configuration files
-│   └── classical_orb_knn.yaml   # Classical ORB + kNN config
+│   ├── classical_orb_knn.yaml        # Classical ORB + kNN ✅
+│   ├── hybrid_superpoint_knn.yaml    # SuperPoint + kNN ✅
+│   └── hybrid_superpoint_superglue.yaml  # SuperPoint + SuperGlue ✅
 │
 ├── data/                    # Datasets (not tracked in git)
 │   ├── TUM/                 # TUM RGB-D sequences
@@ -162,12 +164,23 @@ unzip data_odometry_gray.zip
 # Keep only sequences 00/, 05/, 09/
 ```
 
-### 3. Run Baseline
+### 3. Run a Pipeline
 
 ```bash
+# Classical baseline (ORB + kNN)
 python main.py --config config/classical_orb_knn.yaml \
                --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+
+# Hybrid pipeline (SuperPoint + kNN)
+python main.py --config config/hybrid_superpoint_knn.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+
+# Fully deep pipeline (SuperPoint + SuperGlue)
+python main.py --config config/hybrid_superpoint_superglue.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
 ```
+
+**Note:** Evaluation, visualization, and trajectory saving are **automatic** - no flags needed!
 
 ---
 
@@ -176,7 +189,7 @@ python main.py --config config/classical_orb_knn.yaml \
 ### Basic Syntax
 
 ```bash
-python main.py --config <config_file> [--dataset <dataset>] [--sequence <sequence>] [options]
+python main.py --config <config_file> [--dataset <dataset>] [--sequence <sequence>] [--save <path>]
 ```
 
 ### Required Arguments
@@ -187,44 +200,54 @@ python main.py --config <config_file> [--dataset <dataset>] [--sequence <sequenc
 
 - `--dataset <name>` - Override dataset from config (`TUM` or `KITTI`)
 - `--sequence <name>` - Override sequence from config
-- `--eval` - Evaluate against ground truth and compute metrics
-- `--visualize` - Generate trajectory and error plots
-- `--save <path>` - Save trajectory to file (TUM format)
+- `--save <path>` - Override trajectory save path (auto-generated by default)
+
+### Automatic Features
+
+The pipeline **automatically** performs:
+- ✅ **Trajectory saving** - Saved to `output/{config_name}_{sequence_name}/trajectory.txt`
+- ✅ **Evaluation** - Runs if ground truth is available, saves metrics to JSON
+- ✅ **Visualization** - Generates trajectory and error plots automatically
 
 ### Examples
 
-**Run classical pipeline on TUM static sequence:**
+**Run classical pipeline (automatic evaluation & visualization):**
 ```bash
 python main.py --config config/classical_orb_knn.yaml \
                --dataset TUM --sequence rgbd_dataset_freiburg1_desk
 ```
 
-**Run with evaluation and visualization:**
+**Run SuperPoint + kNN:**
 ```bash
-python main.py --config config/classical_orb_knn.yaml \
-               --dataset TUM --sequence rgbd_dataset_freiburg1_desk \
-               --eval --visualize
+python main.py --config config/hybrid_superpoint_knn.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+```
+
+**Run SuperPoint + SuperGlue:**
+```bash
+python main.py --config config/hybrid_superpoint_superglue.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
 ```
 
 **Run on different TUM sequences:**
 ```bash
 # Static scene
 python main.py --config config/classical_orb_knn.yaml \
-               --dataset TUM --sequence rgbd_dataset_freiburg1_desk --eval
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
 
 # Low dynamics
 python main.py --config config/classical_orb_knn.yaml \
-               --dataset TUM --sequence rgbd_dataset_freiburg3_walking_xyz --eval
+               --dataset TUM --sequence rgbd_dataset_freiburg3_walking_xyz
 
 # High dynamics
 python main.py --config config/classical_orb_knn.yaml \
-               --dataset TUM --sequence rgbd_dataset_freiburg3_walking_halfsphere --eval
+               --dataset TUM --sequence rgbd_dataset_freiburg3_walking_halfsphere
 ```
 
 **Run on KITTI:**
 ```bash
 python main.py --config config/classical_orb_knn.yaml \
-               --dataset KITTI --sequence 09 --eval
+               --dataset KITTI --sequence 09
 ```
 
 **Batch processing (loop over sequences):**
@@ -233,7 +256,7 @@ for seq in rgbd_dataset_freiburg1_desk \
           rgbd_dataset_freiburg3_walking_xyz \
           rgbd_dataset_freiburg3_walking_halfsphere; do
     python main.py --config config/classical_orb_knn.yaml \
-                   --dataset TUM --sequence $seq --eval
+                   --dataset TUM --sequence $seq
 done
 ```
 
@@ -286,9 +309,11 @@ output:
 
 ### Available Configs
 
-- `config/classical_orb_knn.yaml` - Classical: ORB + kNN (✅ implemented)
-- `config/hybrid_superpoint_superglue.yaml` - Hybrid: SuperPoint + SuperGlue (🚧 to be implemented)
-- `config/hybrid_superpoint_lightglue_mask.yaml` - Hybrid with masking (🚧 to be implemented)
+- `config/classical_orb_knn.yaml` - Classical: ORB + kNN ✅
+- `config/hybrid_superpoint_knn.yaml` - Hybrid: SuperPoint + kNN ✅
+- `config/hybrid_superpoint_superglue.yaml` - Hybrid: SuperPoint + SuperGlue ✅
+- `config/hybrid_superpoint_lightglue.yaml` - Hybrid: SuperPoint + LightGlue 🚧
+- `config/hybrid_superpoint_lightglue_mask.yaml` - Hybrid with masking 🚧
 
 ### Design Philosophy
 
@@ -338,28 +363,234 @@ data/KITTI/
 
 ---
 
-## 📈 Evaluation Metrics
+## 📈 Evaluation Pipeline
 
-The framework computes the following metrics when `--eval` is used:
+The project evaluates each method's output through a standardized pipeline that compares estimated trajectories against ground truth. Here's how it works:
 
-### Absolute Trajectory Error (ATE)
-- **RMSE** - Root mean square error of absolute trajectory
-- **Mean** - Average absolute error
-- **Max** - Maximum absolute error
+### Evaluation Workflow
 
-### Relative Pose Error (RPE)
-- **Translation RMSE** - Relative translation error
-- **Rotation RMSE** - Relative rotation error (degrees)
+```
+Estimated Trajectory → Timestamp Sync → Trajectory Alignment → Metric Computation → Results
+```
 
-### Additional Metrics
-- **Inlier ratio** - Percentage of matches surviving RANSAC
-- **Match count** - Number of feature matches per frame
-- **Tracking failures** - Frames where pose estimation failed
-- **Runtime (FPS)** - Processing speed
+### Step-by-Step Process
 
-Trajectory alignment uses the **Umeyama algorithm** to handle scale ambiguity in monocular VO.
+**1. Trajectory Generation**
+- Each pipeline method (ORB+kNN, SuperPoint+LightGlue, etc.) processes the image sequence
+- Produces an estimated trajectory: list of 4×4 pose matrices `[T₀, T₁, ..., Tₙ]`
+- Each pose represents camera position and orientation at that frame
+- Timestamps are recorded for each pose
+
+**2. Ground Truth Loading**
+- Loads ground truth trajectory from dataset (e.g., `groundtruth.txt` for TUM)
+- Ground truth format: `timestamp tx ty tz qx qy qz qw` (position + quaternion)
+- Converts quaternions to rotation matrices, builds 4×4 pose matrices
+
+**3. Timestamp Synchronization**
+- Matches estimated poses to ground truth poses by finding closest timestamps
+- Only includes pose pairs within `max_time_diff` (default: 0.02 seconds)
+- Ensures both trajectories have the same length and correspond to the same time points
+- **Function:** `sync_trajectories()` in `eval/groundtruth_loader.py`
+
+**4. Trajectory Alignment (Umeyama Algorithm)**
+- Monocular VO has **scale ambiguity** (translation is normalized)
+- Aligns estimated trajectory to ground truth using similarity transformation:
+  - **Rotation** (R): Aligns coordinate frames
+  - **Scale** (s): Recovers true scale from ground truth
+  - **Translation** (t): Centers trajectories
+- Transformation: `T_aligned = s·R·T_est + t`
+- **Function:** `align_trajectories()` in `eval/groundtruth_loader.py`
+
+**5. Metric Computation**
+
+#### Absolute Trajectory Error (ATE)
+Measures the absolute difference between estimated and ground truth positions:
+- **RMSE**: `√(mean(||p_est - p_gt||²))` - Root mean square error
+- **Mean**: `mean(||p_est - p_gt||)` - Average absolute error
+- **Max**: `max(||p_est - p_gt||)` - Maximum absolute error
+- **Function:** `compute_ate()` in `eval/metrics.py`
+
+#### Relative Pose Error (RPE)
+Measures error in relative motion between consecutive frames:
+- For each frame pair `(i, i+δ)`:
+  - Compute relative motion in estimated trajectory: `T_est_rel = T_est[i]⁻¹ · T_est[i+δ]`
+  - Compute relative motion in ground truth: `T_gt_rel = T_gt[i]⁻¹ · T_gt[i+δ]`
+  - Error: `T_error = T_gt_rel⁻¹ · T_est_rel`
+- **Translation RMSE**: `√(mean(||t_error||²))` - Relative translation error
+- **Rotation RMSE**: `√(mean(angle(R_error)²))` - Relative rotation error (degrees)
+- **Function:** `compute_rpe()` in `eval/metrics.py`
+
+**6. Runtime Metrics (Per-Frame)**
+- **Match count**: Number of feature matches found per frame
+- **Inlier ratio**: Percentage of matches surviving RANSAC filtering
+- **Tracking failures**: Frames where pose estimation failed (insufficient matches)
+
+**7. Visualization (Optional)**
+- **3D Trajectory Plot**: Overlays estimated and ground truth trajectories
+- **Error Plots**: ATE and RPE errors over time
+- **Function:** `plot_trajectory()`, `plot_errors()` in `eval/plots.py`
+
+### Usage
+
+Evaluation runs automatically when ground truth is available:
+
+```bash
+python main.py --config config/classical_orb_knn.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+```
+
+**Output:**
+```
+📊 Evaluating against ground truth...
+   Estimated: 613 poses
+   Ground truth: 2335 poses
+   After sync: 613 matched poses
+   Alignment scale: 0.5234
+
+📈 Absolute Trajectory Error (ATE):
+   RMSE: 0.0234 m
+   Mean: 0.0198 m
+   Max:  0.0456 m
+
+📈 Relative Pose Error (RPE):
+   Translation RMSE: 0.0123 m
+   Rotation RMSE:    1.23 deg
+```
+
+### Comparing Methods
+
+To compare different methods, run each pipeline and collect metrics:
+
+```bash
+# Classical baseline
+python main.py --config config/classical_orb_knn.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+
+# SuperPoint + kNN
+python main.py --config config/hybrid_superpoint_knn.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+
+# SuperPoint + SuperGlue
+python main.py --config config/hybrid_superpoint_superglue.yaml \
+               --dataset TUM --sequence rgbd_dataset_freiburg1_desk
+```
+
+Results are automatically organized by `(pipeline_name, dataset, sequence)` in the `output/` directory for systematic comparison.
 
 ---
+
+## 💾 Output Files
+
+All output files are automatically saved to organized directories in the `output/` folder. The directory structure is:
+
+```
+output/
+├── {config_name}_{sequence_name}/
+│   ├── trajectory.txt      # Estimated trajectory (TUM format)
+│   ├── metrics.json        # Evaluation metrics
+│   ├── trajectory.png      # 3D trajectory visualization
+│   └── errors.png          # Error plots (ATE & RPE)
+```
+
+**Example:** `output/hybrid_superpoint_knn_rgbd_dataset_freiburg1_desk/`
+
+### Metrics File (`output/{config_name}_{sequence_name}/metrics.json`)
+Saved automatically when evaluation is performed. Contains:
+- **Absolute Trajectory Error (ATE)**: RMSE, mean, max (in meters)
+- **Relative Pose Error (RPE)**: Translation and rotation RMSE
+- **Runtime Metrics**: Average matches per frame, average inlier ratio
+- **Metadata**: Pipeline name, dataset, sequence, timestamp
+
+**Location:** `output/{config_name}_{sequence_name}/metrics.json` (auto-generated, configurable via `output.metrics_file` in config)
+
+**Example:**
+```json
+{
+  "timestamp": "2025-12-02T19:30:45.123456",
+  "pipeline": "classical_orb_knn",
+  "dataset": "TUM",
+  "sequence": "rgbd_dataset_freiburg1_desk",
+  "num_frames": 613,
+  "absolute_trajectory_error": {
+    "rmse": 0.0234,
+    "mean": 0.0198,
+    "max": 0.0456,
+    "unit": "meters"
+  },
+  "relative_pose_error": {
+    "translation_rmse": 0.0123,
+    "rotation_rmse": 1.23,
+    "translation_unit": "meters",
+    "rotation_unit": "degrees"
+  },
+  "runtime_metrics": {
+    "avg_matches_per_frame": 1250.5,
+    "avg_inlier_ratio": 0.85
+  }
+}
+```
+
+### Visualization Plots
+- **`output/{config_name}_{sequence_name}/trajectory.png`**: 3D plot showing estimated vs ground truth trajectories
+- **`output/{config_name}_{sequence_name}/errors.png`**: Error plots showing ATE and RPE over time
+
+**Location:** Auto-generated based on config name and sequence (configurable via `output.trajectory_plot` and `output.errors_plot` in config)
+
+### Trajectory File
+- **Format**: TUM format (`timestamp tx ty tz qx qy qz qw`)
+- **Location**: `output/{config_name}_{sequence_name}/trajectory.txt` (auto-generated)
+- **Usage**: Can be used with EVO toolkit for additional analysis
+- **Override**: Use `--save <path>` to specify a custom path
+
+### Output Organization
+
+All outputs are automatically organized by pipeline and sequence:
+- Each run creates a directory: `output/{config_name}_{sequence_name}/`
+- All related files (trajectory, metrics, plots) are saved together
+- Easy to compare results across different pipelines on the same sequence
+
+**Example output structure:**
+```
+output/
+├── classical_orb_knn_rgbd_dataset_freiburg1_desk/
+│   ├── trajectory.txt
+│   ├── metrics.json
+│   ├── trajectory.png
+│   └── errors.png
+├── hybrid_superpoint_knn_rgbd_dataset_freiburg1_desk/
+│   ├── trajectory.txt
+│   ├── metrics.json
+│   ├── trajectory.png
+│   └── errors.png
+└── hybrid_superpoint_superglue_rgbd_dataset_freiburg1_desk/
+    ├── trajectory.txt
+    ├── metrics.json
+    ├── trajectory.png
+    └── errors.png
+```
+
+**Note:** The `output/` folder is automatically created and is ignored by git (added to `.gitignore`).
+
+---
+
+## 🔧 Implementation Details
+
+### SuperPoint Detector
+- **L2-normalized descriptors** for proper distance computation
+- **Keypoint bounds validation** to filter out-of-bounds features
+- **Empty keypoint handling** for robust edge case management
+- **Score-based keypoint size** for better visualization
+
+### SuperGlue Matcher
+- **Indoor/outdoor weights** - Automatically selects appropriate weights based on dataset type
+  - Indoor weights (ScanNet-trained) for TUM RGB-D
+  - Outdoor weights (MegaDepth-trained) for KITTI
+- **Keypoint scores integration** - Properly passes SuperPoint scores to SuperGlue
+- **Configurable match threshold** - Default 0.2 for optimal balance
+
+### Pose Estimation
+- **RANSAC validation** - Ensures confidence values are within valid range (0 < conf < 1)
+- **Robust error handling** - Gracefully handles edge cases and failed pose estimates
 
 ## 📌 Expected Findings
 

@@ -29,6 +29,8 @@ class SuperPointDetector:
         if image.ndim == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+        h, w = image.shape[:2]
+        
         # [0,1] float, shape: (1,1,H,W)
         img = image.astype(np.float32) / 255.0
         img_tensor = torch.from_numpy(img)[None, None].to(self.device)
@@ -38,8 +40,41 @@ class SuperPointDetector:
 
         kps = pred["keypoints"][0].cpu().numpy()           # (N,2) [x,y]
         desc = pred["descriptors"][0].cpu().numpy().T      # (N,D)
+        scores = pred["scores"][0].cpu().numpy()           # (N,) - keypoint confidence scores
 
-        keypoints = [cv2.KeyPoint(float(x), float(y), 1.0) for (x, y) in kps]
+        # Handle empty keypoints case
+        if len(kps) == 0:
+            return [], np.array([], dtype=np.float32).reshape(0, 256), np.array([], dtype=np.float32)
+
+        # Validate and filter keypoints within image bounds
+        valid_mask = (kps[:, 0] >= 0) & (kps[:, 0] < w) & (kps[:, 1] >= 0) & (kps[:, 1] < h)
+        kps = kps[valid_mask]
+        desc = desc[valid_mask]
+        scores = scores[valid_mask]
+        
+        # If no valid keypoints after filtering, return empty
+        if len(kps) == 0:
+            return [], np.array([], dtype=np.float32).reshape(0, 256), np.array([], dtype=np.float32)
+
+        # Convert to OpenCV KeyPoint format
+        # Use score as size (multiply by reasonable scale factor for visualization)
+        # Size is typically 1-31 pixels, so scale score appropriately
+        keypoints = [cv2.KeyPoint(float(x), float(y), float(score * 10.0 + 1.0)) 
+                     for (x, y), score in zip(kps, scores)]
+        
         desc = desc.astype(np.float32)
+        scores = scores.astype(np.float32)
+        
+        # Explicitly L2-normalize descriptors for proper distance computation
+        # (SuperPoint model already normalizes, but ensure it's done here for safety)
+        # Only normalize if we have descriptors
+        if len(desc) > 0:
+            norms = np.linalg.norm(desc, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0  # Avoid division by zero
+            desc = desc / norms
 
-        return keypoints, desc
+        return keypoints, desc, scores
+    
+    def __call__(self, image):
+        """Interface to match ORBDetector API. Returns (keypoints, descriptors, scores)."""
+        return self.detect_and_compute(image)

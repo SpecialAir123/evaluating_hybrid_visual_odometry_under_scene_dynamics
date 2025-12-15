@@ -19,14 +19,30 @@ class LightGlueMatcher:
                                 filter_threshold=filter_threshold).to(self.device)
         self.net.eval()
 
-    def __call__(self, kp1, desc1, kp2, desc2, image_shape=None):
+    def __call__(self, kp1, desc1, kp2, desc2, image_shape=None, scores1=None, scores2=None):
         """
         kp1, kp2: list[cv2.KeyPoint]
         desc1, desc2: np.ndarray (N,D)
         image_shape: (h, w) tuple
+        scores1, scores2: optional np.ndarray (N,) - keypoint scores (ignored for LightGlue)
         """
         if desc1 is None or desc2 is None or len(kp1) == 0 or len(kp2) == 0:
             return []
+        
+        # Convert ORB binary descriptors to float if needed (similar to SuperGlue)
+        # LightGlue expects float descriptors
+        if desc1.dtype == np.uint8:
+            # ORB descriptors are 32 bytes (256 bits) - unpack to 256 dimensions
+            def unpack_binary_descriptor(desc):
+                """Unpack binary descriptor (N, 32) uint8 -> (N, 256) float32"""
+                unpacked = np.unpackbits(desc, axis=1).astype(np.float32)
+                # L2-normalize
+                norms = np.linalg.norm(unpacked, axis=1, keepdims=True)
+                norms[norms == 0] = 1.0
+                return unpacked / norms
+            
+            desc1 = unpack_binary_descriptor(desc1)
+            desc2 = unpack_binary_descriptor(desc2)
             
         # Convert KeyPoints to coordinates (N, 2)
         pts1 = np.array([[k.pt[0], k.pt[1]] for k in kp1], dtype=np.float32)

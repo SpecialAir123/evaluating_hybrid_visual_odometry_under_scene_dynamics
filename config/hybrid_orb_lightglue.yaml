@@ -1,25 +1,32 @@
 # ============================================================================
-# Classical Visual Odometry Pipeline: ORB + kNN
+# Hybrid Visual Odometry Pipeline: ORB + LightGlue
 # ============================================================================
+# This pipeline isolates the benefit of a lighter deep matcher (LightGlue) with a 
+# classical detector (ORB) to evaluate the contribution of learned matching.
+# LightGlue is more efficient than SuperGlue while maintaining competitive accuracy.
 
 # ----------------------------------------------------------------------------
 # Detector Configuration
 # ----------------------------------------------------------------------------
 detector: orb
 detector_params:
-  nfeatures: 2000
+  nfeatures: 2000  # Maximum number of ORB keypoints to detect
 
 # ----------------------------------------------------------------------------
 # Matcher Configuration
 # ----------------------------------------------------------------------------
-matcher: knn
+matcher: lightglue  # Learned matcher (LightGlue - lighter than SuperGlue)
 matcher_params:
-  ratio: 0.75
+  features: superpoint  # Feature type for LightGlue (use 'superpoint' for 256-dim descriptors to match ORB)
+  depth_confidence: -1  # Depth confidence threshold (-1 = auto)
+  width_confidence: -1  # Width confidence threshold (-1 = auto)
+  filter_threshold: 0.1  # Matching confidence threshold (lower = more matches)
+  use_cuda: true  # Use GPU if available
 
 # ----------------------------------------------------------------------------
 # Masking Configuration
 # ----------------------------------------------------------------------------
-masking: none
+masking: none  # No masking for this pipeline
 
 # ----------------------------------------------------------------------------
 # Dataset Configuration (can be overridden via CLI: --dataset, --sequence)
@@ -32,16 +39,16 @@ data_root: data/TUM
 # Pose Estimation Parameters
 # ----------------------------------------------------------------------------
 pose_estimation:
-  ransac_threshold: 1.0
-  ransac_confidence: 0.999  # Must be > 0 and < 1
-  min_matches: 8
+  ransac_threshold: 1.0  # RANSAC threshold in pixels (typical: 1.0-3.0)
+  ransac_confidence: 0.999  # RANSAC confidence level (must be > 0 and < 1)
+  min_matches: 8           # Minimum number of matches required for pose estimation
 
 # ----------------------------------------------------------------------------
 # Evaluation Parameters
 # ----------------------------------------------------------------------------
 evaluation:
-  max_time_diff: 0.02
-  rpe_delta: 1
+  max_time_diff: 0.02  # Maximum time difference (seconds) for timestamp matching
+  rpe_delta: 1         # Frame interval for relative pose error computation
 
 # ----------------------------------------------------------------------------
 # Output Configuration

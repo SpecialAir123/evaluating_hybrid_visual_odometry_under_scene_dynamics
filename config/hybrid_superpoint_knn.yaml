@@ -1,25 +1,28 @@
 # ============================================================================
-# Classical Visual Odometry Pipeline: ORB + kNN
+# Hybrid Visual Odometry Pipeline: SuperPoint + kNN
 # ============================================================================
 
 # ----------------------------------------------------------------------------
 # Detector Configuration
 # ----------------------------------------------------------------------------
-detector: orb
+detector: superpoint
 detector_params:
-  nfeatures: 2000
+  max_keypoints: 2000  # Maximum number of SuperPoint keypoints to detect (increased to match ORB)
+  keypoint_threshold: 0.005  # SuperPoint keypoint detection threshold
+  nms_radius: 4  # Non-maximum suppression radius
+  use_cuda: true  # Use GPU if available
 
 # ----------------------------------------------------------------------------
 # Matcher Configuration
 # ----------------------------------------------------------------------------
-matcher: knn
+matcher: knn  # Classical kNN matcher with learned descriptors
 matcher_params:
-  ratio: 0.75
+  ratio: 0.8  # Lowe's ratio test threshold (0.0-1.0) - slightly relaxed for normalized descriptors
 
 # ----------------------------------------------------------------------------
 # Masking Configuration
 # ----------------------------------------------------------------------------
-masking: none
+masking: none  # No masking for this pipeline
 
 # ----------------------------------------------------------------------------
 # Dataset Configuration (can be overridden via CLI: --dataset, --sequence)
@@ -32,16 +35,16 @@ data_root: data/TUM
 # Pose Estimation Parameters
 # ----------------------------------------------------------------------------
 pose_estimation:
-  ransac_threshold: 1.0
-  ransac_confidence: 0.999  # Must be > 0 and < 1
-  min_matches: 8
+  ransac_threshold: 1.0  # RANSAC threshold in pixels (typical: 1.0-3.0)
+  ransac_confidence: 0.999  # RANSAC confidence level (must be > 0 and < 1)
+  min_matches: 8           # Minimum number of matches required for pose estimation
 
 # ----------------------------------------------------------------------------
 # Evaluation Parameters
 # ----------------------------------------------------------------------------
 evaluation:
-  max_time_diff: 0.02
-  rpe_delta: 1
+  max_time_diff: 0.02  # Maximum time difference (seconds) for timestamp matching
+  rpe_delta: 1         # Frame interval for relative pose error computation
 
 # ----------------------------------------------------------------------------
 # Output Configuration
